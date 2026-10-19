@@ -1,4 +1,4 @@
-name: Destroy app stack
+name: App deployment
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ env:
  STATE_FILE: "terraform.tfstate"
 
 jobs:
-  destroy_stack:
+  plan_and_deploy:
     runs-on: ubuntu-26.04
     permissions: write-all
 
@@ -25,16 +25,22 @@ jobs:
       run: terraform init
 
     # Generates an execution plan for Terraform
-    - name: Terraform Destroy
-      if: hashFiles(env.STATE_FILE) != ''
-      run: terraform destroy -auto-approve
+    - name: Terraform Plan
+      run: terraform plan -input=false
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
 
-    # Save the destroyed state
-    - name: Update the Terraform deployment state
+      # Build or change infrastructure according to Terraform configuration files
+    - name: Terraform Apply
+      run: terraform apply -no-color -auto-approve
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+
+    - name: Save current Terraform deployment state (if file has changed)
       if: hashFiles(env.STATE_FILE) != ''
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
